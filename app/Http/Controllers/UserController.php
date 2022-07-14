@@ -2,28 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\CreateUserRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
-use App\Repository\UserRepository;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    public $userRepository;
-
-    public function __construct(UserRepository $userRepository)
-    {
-        $this->userRepository = $userRepository;
-    }
     /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
+     * 
+     * @return \Collection
      */
     public function index()
     {
-        $users = $this->userRepository->all();
+        $users = User::all();
 
-        return response()->json($users, 200);
+        return view('admin.users')->with(['users' => $users]);
+    
     }
 
     /**
@@ -33,79 +29,61 @@ class UserController extends Controller
      */
     public function create()
     {
-        //
+        return view('admin.index');
+    
     }
 
     /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(CreateUserRequest $request)
-    {
-        $this->userRepository->create($request);
-
-        return response()->json('User Created Successfully!', 201);
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        $this->userRepository->delete($id);
-
-        return response()->json('User Deleted Successfully!', 200);
-    }
-
-    /**
-     * Search users with specific keywords.
+     * Adding a new user.
      *
      * @param Request $request
-     * @return Collection
+     * @return \Illuminate\Http\Response
      */
-    public function search(Request $request)
+    public function store(Request $request)
     {
-        $users = $this->userRepository->search($request);
+        $validator = Validator::make($request->all(), [
+            'name'         => 'required|max:255',
+            'email'        => 'required|email|unique:users',
+            'phone_number' => 'required|digits:10|unique:users',
+            'password'     => 'required|min:6|confirmed'
+           
+        ]);
+          
+          // if validation has failed redirect to back
+        
+        if ($validator->fails()) {
+            return back()->withErrors($validator);
+                       
+        }
 
-        return response()->json($users, 200);
+        User::create([
+            'name' => $request->email,
+            'email' => $request->email,
+            'phone_number' => $request->phone_number,
+            'password' => bcrypt($request->password),
+            'country' => $request->country
+        ]);
+
+        Session::flash('success', 'User added successfully!');
+
+        return Redirect::to('/users/create');
+    
+    }
+
+    /**
+     * Deleting a  user.
+     *
+     * @param User $user
+     * @return \Illuminate\Http\Response
+     */
+    public function delete($id)
+    {
+        $user = User::findOrFail($id);
+        $user->destroy();
+
+        Session::flash('success', 'User deleted successfully!');
+
+        return Redirect::to('/users/create');
+    
     }
 }
